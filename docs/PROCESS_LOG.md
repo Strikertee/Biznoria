@@ -73,3 +73,15 @@ Decisions: Contract unchanged (same paths/schemas) — enforcement is a backend 
 Blockers: None — BACKEND-API lane owns real auth wiring on top of is_allowed()
 Next checkpoint: D. Integration complete (backend routes calling biznoria_ml + adapter + auth)
 Time remaining: ~7h
+
+### [2026-10-08 10:00] [ML covering FRONTEND] [FRONTEND-DASHBOARD]
+Status: DONE
+Goal: Build the React/TS dashboard in Wema purple/white against the frozen contract, with the two-role surface (SME review-only vs officer)
+Changes: Full frontend implemented — index.html, tailwind wema palette (#5c2d91), api types/client/hooks, authz.ts role matrix, ui/charts/CreditReadiness/Accounts/LoanSimulator components, Portfolio + SmeDetail pages, App shell with role switch + QueryClient, main.tsx, tsconfig/postcss/vite-env, vitest client+authz tests, package-lock committed
+Files changed: frontend/* (19 files), frontend/package.json (+@types/react, @types/react-dom)
+Tests run: npx tsc --noEmit (clean); npx vitest run (2 files, 5 tests passed); npm run build (dist/ built in ~33s)
+Test result: ALL GREEN
+Decisions: State-based routing (no router dep, rule 6); SME demo maps login to first SME with no listing rendered; 609KB JS chunk warning accepted for hackathon (recharts, no code-split — deferred); dist/ + node_modules gitignored, package-lock committed
+Blockers: None — pending real backend (dashboard currently errors cleanly with retry until API is up); C: disk was full (ENOSPC), cleared ~500MB caches to install
+Next checkpoint: E. Final smoke test (portfolio → SME → forecast → credit → simulator) once backend routes land
+Time remaining: ~6.5h
