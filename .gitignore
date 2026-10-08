@@ -7,7 +7,6 @@ venv/
 # Synthetic data artefacts — never commit generated data or the local DB.
 data/*.csv
 data/*.parquet
-data/*.db
 data/*.sqlite3
 data/synthetic/
 !data/sample/
