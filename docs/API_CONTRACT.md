@@ -64,3 +64,13 @@ Base URL: `{API_BASE}/api/v1`. All responses JSON. Errors: `{ "detail": str }`.
 - Scores are 0–100 floats. Money: Naira (NGN) floats, 2dp in UI.
 - `source` is mandatory on account-scoped transaction data.
 - Credit/loan responses MUST carry their disclaimer strings verbatim.
+
+## Authorization — roles (additive; no endpoint/schema change)
+- Roles: `sme` (customer in ALAT for Business), `officer` (account officer).
+  TODO(BACKEND-API): authenticate (stub in `backend/app/auth.py`) and enforce.
+- `sme` may call: `GET /smes/{own_id}`, `/health`, `/cashflow`, `/forecast`,
+  `/credit-readiness`, `/accounts` — with `{id}` forced to their own SME.
+  `sme` MUST NOT reach: `/portfolio/summary`, `GET /smes` (list),
+  `POST /loan-simulation`.
+- `officer` may call all P0 endpoints, but external data still requires a
+  valid consent + token per SME, and credit/loan disclaimers still apply.

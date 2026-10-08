@@ -73,3 +73,26 @@ small committed sample only). Schema in `docs/API_CONTRACT.md` + `docs/ARCHITECT
 ## 10. Definition of done
 Implementation exists; relevant tests exist and pass; no unrelated feature broken;
 process log updated; a teammate can continue without verbal explanation.
+
+## 11. Roles and visibility (ALAT for Business integration)
+Two roles, one frozen contract. The API does not change per role — the backend
+authorises which surfaces each role may call, and the frontend renders per role.
+
+**SME customer** (in the ALAT for Business app): sees ONLY their own business —
+cash-flow history, financial health metrics, 30/60/90-day forecast, and
+prototype credit readiness, strictly for loan-review transparency. Never another
+SME's data. Never the simulator. Never officer tooling.
+
+**Account officer**: portfolio view across SMEs, per-SME drill-down (health,
+cash-flow, forecast, credit readiness), connected accounts (internal +
+consented-external only — consent still required), the loan what-if simulator,
+and combined officer tasks. The simulator and credit score stay decision
+support: no approval/decline output on either side.
+
+Hard rules:
+- SME `sme_id` is derived from the authenticated customer, never from a
+  client-supplied parameter they can tamper with.
+- External (non-Wema) data is served only under a valid consent + token,
+  on both roles.
+- Credit-readiness and simulation responses carry their disclaimers verbatim
+  on both roles.

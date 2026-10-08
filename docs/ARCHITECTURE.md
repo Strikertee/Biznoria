@@ -51,6 +51,18 @@
 6. Expiry is automatic: an expired token is rejected without a backend change.
 See `backend/app/adapters/openbanking.py` (interface + synthetic implementation).
 
+## Roles → surface matrix (additive; contract unchanged)
+| Capability | SME customer | Account officer |
+|---|---|---|
+| Own cash-flow, health, forecast, credit readiness | ✅ (own `sme_id` only) | ✅ (any SME) |
+| Portfolio summary, SME list | ❌ | ✅ |
+| Connected accounts (internal + consented-external) | ✅ own only | ✅ per SME |
+| Loan what-if simulator | ❌ | ✅ |
+| Combined officer tasks | ❌ | ✅ (P1) |
+Enforcement point: backend (`backend/app/auth.py` role guard + `sme_id`
+scoping); frontend renders per role but never enforces. Both roles inherit the
+consent/token gating above for external data.
+
 ## Request flow (example: forecast)
 `GET /api/v1/smes/{id}/forecast?horizon=90` → router validates `horizon ∈ {30,60,90}`
 → loads daily net flow (internal + consented external) → `biznoria_ml.forecast_future`

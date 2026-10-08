@@ -61,3 +61,15 @@ Decisions: Write/payment scopes excluded by design (READ_ONLY_SCOPES allowlist);
 Blockers: None — OPEN-BANKING-MOCK lane owns the seeded-RNG data + consent-store wiring on top of this interface
 Next checkpoint: D. Integration complete (backend routes calling biznoria_ml + adapter)
 Time remaining: ~7.5h
+
+### [2026-10-08 03:20] [ML] [ROLE-MODEL]
+Status: DONE
+Goal: Formalise the two-role visibility model (SME review-only surface vs officer simulation/combined view) without changing the frozen contract
+Changes: PRD §11 (roles + hard rules), ARCHITECTURE role→surface matrix, API_CONTRACT authorization section (additive), new backend/app/auth.py stub with pure testable is_allowed() rule
+Files changed: docs/PRD.md, docs/ARCHITECTURE.md, docs/API_CONTRACT.md, backend/app/auth.py
+Tests run: stdlib auth smoke (own-data allow; cross-SME/POST/portfolio/list deny for sme; officer allow-all; unknown role deny)
+Test result: AUTH_SMOKE_OK
+Decisions: Contract unchanged (same paths/schemas) — enforcement is a backend guard + sme_id scoping, frontend renders per role but never enforces; consent/token gating applies on both roles; simulator + listing stay officer-only
+Blockers: None — BACKEND-API lane owns real auth wiring on top of is_allowed()
+Next checkpoint: D. Integration complete (backend routes calling biznoria_ml + adapter + auth)
+Time remaining: ~7h
