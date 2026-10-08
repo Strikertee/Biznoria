@@ -1,22 +1,40 @@
 services:
+  # FastAPI backend (owner: BACKEND-API lane).
+  # The whole repo is checked out, so the backend imports the ML package from
+  # ml/src (see backend/app/services/ml.py) — no extra install step needed.
   - type: web
     name: biznoria-api
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend/app
+    # alembic builds the schema on a fresh database; `;` (not `&&`) keeps the API
+    # available even if that step is skipped, because the app also runs
+    # create_all on startup. `--app-dir backend` is required so that `app.main`
+    # resolves as a package (the previous `--app-dir backend/app` could not).
+    startCommand: alembic upgrade head; uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend
+    healthCheckPath: /healthz
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
       - key: DATABASE_URL
         fromDatabase: { name: biznoria-db, property: connectionString }
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: SEED_ON_STARTUP
+        value: "1"
+
+  # React/Vite frontend (owner: FRONTEND-DASHBOARD lane).
+  # The PRD's primary target is Vercel; this Render static service is the
+  # fallback path and needs rootDir so npm finds frontend/package.json.
   - type: web
     name: biznoria-web
-    runtime: node
+    runtime: static
+    rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE
         sync: false
+
 databases:
   - name: biznoria-db
     plan: free

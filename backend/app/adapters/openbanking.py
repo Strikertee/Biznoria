@@ -126,12 +126,30 @@ class SyntheticProvider(AccountProvider):
         self._consents[consent.id] = consent
         return consent
 
+    def register_consent(self, consent: Consent) -> Consent:
+        """Hydrate a consent that already exists elsewhere (e.g. the DB).
+
+        Additive helper for the BACKEND-API lane: the backend is the source of
+        truth for consent records, the provider is the source of truth for token
+        validity. Registering (rather than re-issuing) preserves the original
+        ``granted_at``/``expires_at``/``revoked_at`` values.
+        """
+        self._consents[consent.id] = consent
+        return consent
+
     def approve_consent(self, consent_id: str, now_iso: str) -> AccessToken:
         """Customer approved → mint the read-only, time-boxed token."""
         consent = self._consents[consent_id]
         token = issue_token(consent, now_iso)
         self._tokens[token.token] = token
         return token
+
+    def token_for_consent(self, consent_id: str) -> AccessToken | None:
+        """Return the currently-stored token for a consent, if one was minted."""
+        for tok in self._tokens.values():
+            if tok.consent_id == consent_id:
+                return tok
+        return None
 
     def revoke_consent(self, consent_id: str, now_iso: str) -> None:
         """Customer revoked → consent and all its tokens die immediately."""

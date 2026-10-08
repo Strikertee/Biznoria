@@ -1,36 +1,99 @@
-"""Frozen API entrypoint — route paths must match docs/API_CONTRACT.md.
+"""Frozen API entrypoint — route paths match docs/API_CONTRACT.md.
 
-TODO(BACKEND-API): wire DB session, seed loader, ml services, adapter.
-Stubs below return 501 so contract tests can assert paths exist without
-claiming functionality.
+Startup (lifespan):
+  1. ensure schema exists (``Base.metadata.create_all`` — no-op if Alembic ran)
+  2. seed the deterministic synthetic dataset when the DB is empty
+  3. hydrate the Open Banking consent/token store from the DB
+
+Run locally:
+    uvicorn app.main:app --reload --app-dir backend
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from __future__ import annotations
 
-app = FastAPI(title="Biznoria SME Financial Intelligence (prototype)")
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import select, text
+
+from .config import APP_ENV, FRONTEND_ORIGINS, seed_on_startup
+from .database import Base, SessionLocal, engine
+from .models import SME
+from .routers import accounts_router, portfolio_router, simulation_router, smes_router
+from .schemas import HealthzResponse, ReadyzResponse
+from .seed import seed_database
+from .services import consent as consent_service
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    if seed_on_startup():
+        with SessionLocal() as db:
+            result = seed_database(db)
+            consent_service.hydrate_provider(db)
+            if result.get("seeded"):
+                print(
+                    f"[seed] {result['smes']} SMEs, {result['accounts']} accounts, "
+                    f"{result['transactions']} transactions (anchor {result['anchor_date']})"
+                )
+    yield
+
+
+app = FastAPI(
+    title="Biznoria SME Financial Intelligence (prototype)",
+    description=(
+        "Hackathon prototype — synthetic data only. Decision support, not "
+        "underwriting. No live bank connectivity."
+    ),
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO(DEPLOY): restrict to FRONTEND_ORIGIN
+    allow_origins=FRONTEND_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(portfolio_router)
+app.include_router(smes_router)
+app.include_router(accounts_router)
+app.include_router(simulation_router)
 
-@app.get("/healthz")
-def healthz():
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(_request: Request, exc: RequestValidationError):
+    """Contract: errors are ``{"detail": str}`` (not FastAPI's default list)."""
+    first = exc.errors()[0] if exc.errors() else {}
+    loc = ".".join(str(p) for p in first.get("loc", ()) if p not in ("body", "query"))
+    msg = first.get("msg", "invalid request")
+    detail = f"{loc}: {msg}" if loc else msg
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
+@app.get("/healthz", response_model=HealthzResponse, tags=["ops"])
+def healthz() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/readyz")
-def readyz():
-    # TODO(BACKEND-API): check DB + seed loaded
-    return {"ready": False, "checks": {"db": False, "seed": False}}
+@app.get("/readyz", response_model=ReadyzResponse, tags=["ops"])
+def readyz() -> dict:
+    checks = {"db": False, "seed": False}
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+            checks["db"] = True
+            checks["seed"] = (
+                db.execute(select(SME.id).limit(1)).scalar_one_or_none() is not None
+            )
+    except Exception:  # noqa: BLE001 — readiness must never raise
+        pass
+    return {"ready": all(checks.values()), "checks": checks}
 
 
-# TODO(BACKEND-API): include routers with the EXACT frozen prefixes:
-#   /api/v1/portfolio/summary, /api/v1/smes, /api/v1/smes/{id},
-#   /api/v1/smes/{id}/health, /cashflow, /forecast?horizon=,
-#   /credit-readiness, /accounts, POST /loan-simulation
-# See backend/app/routers/ stubs.
+__all__ = ["app", "APP_ENV"]
