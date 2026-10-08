@@ -2,6 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-white text-slate-800;
+/*
+ * The base layer is plain CSS on purpose. If Tailwind ever resolves a stale
+ * config, `@apply` with a custom-palette class throws and takes the WHOLE
+ * stylesheet down — which renders the app as a white page. Plain values here
+ * can never fail that way.
+ */
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #0b0f19;
+    color: #f3f4f6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Financial figures line up column-to-column. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background-color: #0b0f19;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #374151;
+    border: 2px solid #0b0f19;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #4b5563;
+  }
+}
+
+@layer components {
+  /* Hairline border + faint top sheen — the one surface used across the app. */
+  .surface {
+    border-radius: 14px;
+    border: 1px solid #1f2937;
+    background-color: #111827;
+    background-image: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.035) 0%,
+      rgba(255, 255, 255, 0) 120px
+    );
+    box-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.4),
+      0 10px 26px -16px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Lift is for interactive surfaces only — not decoration on every card. */
+  .surface-hover {
+    transition:
+      transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .surface-hover:hover {
+    transform: translateY(-1px);
+    border-color: #374151;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.45),
+      0 18px 36px -20px rgba(0, 0, 0, 0.8);
+  }
+
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgba(52, 211, 153, 0.7),
+      0 0 0 4px #0b0f19;
+  }
+}
+
+@layer utilities {
+  /* Engineering graph-paper, faded at the edges. Replaces the blurred
+   * radial "blob" gradient that reads as machine-generated. */
+  .grid-texture {
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 35%, transparent 100%);
+    mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 35%, transparent 100%);
+  }
+
+  /* Hero figures: big, tight, unambiguous. */
+  .figure-xl {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .label-micro {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
 }

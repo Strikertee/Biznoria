@@ -36,6 +36,7 @@ SME_ALLOWED_SUFFIXES: tuple[str, ...] = (
     "/forecast",
     "/credit-readiness",
     "/accounts",
+    "/loan-applications",
 )
 
 ROLE_SME = "sme"
@@ -48,17 +49,21 @@ def is_allowed(role: str, method: str, path: str, own_sme_id: str | None = None)
         return True
     if role != "sme":
         return False
-    if method.upper() == "POST":
-        return False  # simulator + any future writes are officer-only
-    if path == "/api/v1/smes":
-        return False  # no cross-SME listing for customers
-    if path.startswith("/api/v1/portfolio"):
+    # Officer-only surfaces: the portfolio, the SME list, the application queue
+    # and the recommendation endpoint.
+    if path == "/api/v1/smes" or path.startswith("/api/v1/portfolio"):
         return False
-    if path.startswith("/api/v1/smes/"):
-        if own_sme_id is not None and f"/api/v1/smes/{own_sme_id}" not in path:
-            return False  # customers can only address their own sme_id
-        return any(path.endswith(s) for s in SME_ALLOWED_SUFFIXES) or path.count("/") == 4
-    return False
+    if path.startswith("/api/v1/loan-applications"):
+        return False
+    if not path.startswith("/api/v1/smes/"):
+        return False
+    if own_sme_id is not None and f"/api/v1/smes/{own_sme_id}" not in path:
+        return False  # customers can only address their own sme_id
+    if method.upper() == "POST":
+        # The one write an SME may perform: applying for a facility on its own
+        # business. The simulator and everything else stay officer-only.
+        return path.endswith("/loan-applications")
+    return any(path.endswith(s) for s in SME_ALLOWED_SUFFIXES) or path.count("/") == 4
 
 
 @dataclass(frozen=True)

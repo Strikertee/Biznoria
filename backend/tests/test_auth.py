@@ -42,6 +42,20 @@ def test_is_allowed_sme_is_scoped_to_its_own_review_surface() -> None:
     assert not is_allowed("sme", "GET", f"/api/v1/smes/{TOLA}/health", own_sme_id=ADE)
 
 
+def test_is_allowed_sme_may_only_apply_for_its_own_facility() -> None:
+    """The single write an SME has: submitting a facility request on its own business."""
+    assert is_allowed("sme", "POST", f"/api/v1/smes/{ADE}/loan-applications", own_sme_id=ADE)
+    assert is_allowed("sme", "GET", f"/api/v1/smes/{ADE}/loan-applications", own_sme_id=ADE)
+
+    # Not for another business, not the officer queue, not the recommendation.
+    assert not is_allowed("sme", "POST", f"/api/v1/smes/{TOLA}/loan-applications", own_sme_id=ADE)
+    assert not is_allowed("sme", "GET", "/api/v1/loan-applications", own_sme_id=ADE)
+    assert not is_allowed("sme", "GET", "/api/v1/loan-applications/APP-0001", own_sme_id=ADE)
+    assert not is_allowed(
+        "sme", "POST", "/api/v1/loan-applications/APP-0001/recommendation", own_sme_id=ADE
+    )
+
+
 def test_is_allowed_unknown_role_is_denied() -> None:
     assert not is_allowed("admin", "GET", "/api/v1/smes")
 

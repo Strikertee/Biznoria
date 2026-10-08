@@ -23,6 +23,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     JSON,
     String,
 )
@@ -63,6 +64,26 @@ class ConsentStatus(str, enum.Enum):
     EXPIRED = "expired"
     REVOKED = "revoked"
     NOT_CONNECTED = "not_connected"
+
+
+class ApplicationStatus(str, enum.Enum):
+    """Lifecycle of a facility request. Never an approval/decline state."""
+
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    RECOMMENDATION_RECORDED = "recommendation_recorded"
+
+
+class Recommendation(str, enum.Enum):
+    """Officer output — decision support only (PRD rule 3).
+
+    There is deliberately no ``approve``/``decline`` member: the platform
+    prepares a recommendation for human credit review, it does not decide.
+    """
+
+    RECOMMEND_FOR_REVIEW = "recommend_for_review"
+    REQUEST_MORE_INFORMATION = "request_more_information"
+    FLAG_FOR_MONITORING = "flag_for_monitoring"
 
 
 class SME(Base):
@@ -127,3 +148,33 @@ class Consent(Base):
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class LoanApplication(Base):
+    """An SME's request for a facility (PRD §2 consent lifecycle, step 1).
+
+    The officer's terminal action is a *recommendation* for human credit review
+    — never an approval or a decline.
+    """
+
+    __tablename__ = "loan_applications"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)  # APP-0001
+    sme_id: Mapped[str] = mapped_column(ForeignKey("smes.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    annual_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    term_months: Mapped[int] = mapped_column(Integer, nullable=False)
+    purpose: Mapped[str] = mapped_column(String(240), nullable=False, default="")
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default=ApplicationStatus.SUBMITTED.value, index=True
+    )
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    recommendation: Mapped[str | None] = mapped_column(String(48), nullable=True)
+    recommendation_note: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    recommendation_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reviewed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    sme: Mapped["SME"] = relationship()

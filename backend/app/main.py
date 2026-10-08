@@ -21,7 +21,13 @@ from sqlalchemy import select, text
 from .config import APP_ENV, FRONTEND_ORIGINS, seed_on_startup
 from .database import Base, SessionLocal, engine
 from .models import SME
-from .routers import accounts_router, portfolio_router, simulation_router, smes_router
+from .routers import (
+    accounts_router,
+    applications_router,
+    portfolio_router,
+    simulation_router,
+    smes_router,
+)
 from .schemas import HealthzResponse, ReadyzResponse
 from .seed import seed_database
 from .services import consent as consent_service
@@ -64,6 +70,7 @@ app.include_router(portfolio_router)
 app.include_router(smes_router)
 app.include_router(accounts_router)
 app.include_router(simulation_router)
+app.include_router(applications_router)
 
 
 @app.exception_handler(RequestValidationError)

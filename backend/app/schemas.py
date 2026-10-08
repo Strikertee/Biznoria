@@ -8,6 +8,7 @@ does not carry; they are strictly additive and never replace a frozen field.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
@@ -193,6 +194,61 @@ class HealthzResponse(BaseModel):
 class ReadyzResponse(BaseModel):
     ready: bool
     checks: dict[str, bool]
+
+
+# --------------------------------------------------------------------------- #
+# Loan applications (additive — see docs/DECISIONS.md CR-004)
+# --------------------------------------------------------------------------- #
+
+RecommendationValue = Literal[
+    "recommend_for_review", "request_more_information", "flag_for_monitoring"
+]
+
+
+class LoanApplicationCreate(BaseModel):
+    """An SME's request for a facility. Consent is required: the request is the
+    trigger for the read-only data-sharing prompt in the PRD consent lifecycle."""
+
+    amount: float = Field(gt=0, description="Requested principal in NGN")
+    annual_rate: float = Field(ge=0, le=1, description="Indicative annual rate, e.g. 0.24")
+    term_months: int = Field(gt=0, le=120)
+    purpose: str = Field(default="", max_length=240)
+    consent: bool = Field(description="Customer authorises read-only data sharing")
+
+
+class RecommendationRequest(BaseModel):
+    """Officer output. Decision support only — no approve/decline value exists."""
+
+    recommendation: RecommendationValue
+    note: str = Field(default="", max_length=400)
+
+
+class LoanApplication(BaseModel):
+    id: str
+    sme_id: str
+    sme_name: str
+    amount: float
+    annual_rate: float
+    term_months: int
+    purpose: str
+    monthly_repayment: float
+    status: str
+    status_label: str
+    submitted_at: datetime
+    recommendation: str | None = None
+    recommendation_label: str | None = None
+    recommendation_note: str | None = None
+    recommendation_at: datetime | None = None
+    reviewed_by: str | None = None
+    disclaimer: str
+
+    @field_serializer("submitted_at")
+    def _ser_submitted(self, v: datetime) -> str:
+        return _iso_z(v)
+
+    @field_serializer("recommendation_at")
+    def _ser_recommendation(self, v: datetime | None) -> str | None:
+        return None if v is None else _iso_z(v)
 
 
 def _iso_z(v: datetime) -> str:

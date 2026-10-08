@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -27,7 +27,10 @@ from .config import REPO_ROOT, SEED_DAYS, SEED_SMES, SEED_VALUE, SYNTHETIC_DIR
 from .models import (
     Account,
     AccountSource,
+    ApplicationStatus,
     Consent,
+    LoanApplication,
+    Recommendation,
     SME,
     Transaction,
     TxCategory,
@@ -104,6 +107,44 @@ OUTFLOW_CATEGORIES = [
 OUTFLOW_PROBS = [0.40, 0.15, 0.08, 0.10, 0.12, 0.08, 0.07]
 
 READ_SCOPES = ["accounts:read", "transactions:read"]
+
+# --------------------------------------------------------------------------- #
+# Display names for the non-fixture SMEs.
+#
+# The ML generator names its rows "SME 001".."SME 050" (a fixture label, not a
+# business name). The five PRD §9 fixtures get real names from FIXTURES above;
+# the remaining portfolio gets a deterministic, sector-appropriate Nigerian
+# business name so the demo reads as a real portfolio rather than placeholder
+# rows. Purely presentational — no schema or contract change.
+# --------------------------------------------------------------------------- #
+_FIRST_NAMES = (
+    "Adebayo", "Chidinma", "Emeka", "Fatima", "Ngozi", "Tunde", "Yemi", "Ibrahim",
+    "Amaka", "Segun", "Blessing", "Kelechi", "Aisha", "Obinna", "Funke", "Musa",
+    "Chiamaka", "Damilola", "Uche", "Halima", "Babatunde", "Ifeoma", "Sani",
+    "Adaeze", "Gbenga", "Zainab", "Chinedu", "Yetunde", "Aliyu", "Nkechi",
+)
+
+_SECTOR_NOUNS: dict[str, tuple[str, ...]] = {
+    "fashion": ("Fashion House", "Textiles", "Styles", "Apparel"),
+    "retail": ("Stores", "Supermarket", "Trading", "Mart"),
+    "food": ("Kitchen", "Restaurant", "Foods", "Catering"),
+    "tech-services": ("Technologies", "Digital", "Systems", "Solutions"),
+    "logistics": ("Logistics", "Haulage", "Transport", "Freight"),
+    "agro": ("Agro", "Farms", "Produce", "Agro-Allied"),
+}
+
+
+def _business_name(index: int, sector: str) -> str:
+    """Deterministic, unique, sector-appropriate display name.
+
+    ``index % 30`` picks the first name and ``(index * 3) % 4`` the noun; the
+    pair can only repeat after 60 indices, so a 50-SME portfolio is collision-free
+    while still varying the noun rather than repeating one per sector.
+    """
+    first = _FIRST_NAMES[index % len(_FIRST_NAMES)]
+    nouns = _SECTOR_NOUNS.get(sector, ("Enterprises", "Ventures", "Company"))
+    noun = nouns[(index * 3) % len(nouns)]
+    return f"{first} {noun}"
 
 
 # --------------------------------------------------------------------------- #
@@ -278,8 +319,8 @@ def seed_database(db: Session) -> dict:
         fixture = fixture_by_source.get(source_id)
 
         sme_id = fixture["id"] if fixture else source_id
-        name = fixture["name"] if fixture else str(row.name)
         sector = fixture["sector"] if fixture else str(row.sector)
+        name = fixture["name"] if fixture else _business_name(index, sector)
         size_band = fixture["size_band"] if fixture else str(row.size_band)
         region = fixture["region"] if fixture else str(row.region)
         joined_on = row.joined_on
@@ -382,6 +423,10 @@ def seed_database(db: Session) -> dict:
     if consent_rows:
         db.execute(insert(Consent), consent_rows)
     _bulk_insert_transactions(db, tx_rows)
+
+    application_rows = _seed_applications(sme_rows, anchor)
+    if application_rows:
+        db.execute(insert(LoanApplication), application_rows)
     db.commit()
 
     return {
@@ -390,6 +435,7 @@ def seed_database(db: Session) -> dict:
         "accounts": len(account_rows),
         "consents": len(consent_rows),
         "transactions": len(tx_rows),
+        "applications": len(application_rows),
         "anchor_date": anchor.isoformat(),
     }
 
@@ -397,6 +443,75 @@ def seed_database(db: Session) -> dict:
 def _bulk_insert_transactions(db: Session, rows: list[dict], chunk: int = 5000) -> None:
     for start in range(0, len(rows), chunk):
         db.execute(insert(Transaction), rows[start : start + chunk])
+
+
+# --------------------------------------------------------------------------- #
+# Seeded facility requests.
+#
+# Deliberately drawn from NON-fixture businesses (index >= 5) so the five PRD §9
+# demo fixtures stay application-free — the demo can submit one live from
+# Ade's Fashion Store and watch it land in the officer's queue.
+# --------------------------------------------------------------------------- #
+_SEED_APPLICATIONS: tuple[dict, ...] = (
+    {
+        "sme_index": 6,
+        "amount": 3_500_000,
+        "rate": 0.22,
+        "term": 18,
+        "purpose": "Additional delivery van for the Lagos route",
+        "status": ApplicationStatus.SUBMITTED.value,
+        "days_ago": 2,
+    },
+    {
+        "sme_index": 9,
+        "amount": 1_200_000,
+        "rate": 0.24,
+        "term": 12,
+        "purpose": "Festive-season stock build-up",
+        "status": ApplicationStatus.UNDER_REVIEW.value,
+        "days_ago": 6,
+    },
+    {
+        "sme_index": 11,
+        "amount": 8_000_000,
+        "rate": 0.19,
+        "term": 36,
+        "purpose": "Fit-out for a second outlet",
+        "status": ApplicationStatus.RECOMMENDATION_RECORDED.value,
+        "days_ago": 14,
+        "recommendation": Recommendation.RECOMMEND_FOR_REVIEW.value,
+        "note": "Stable inflows and a comfortable forecast cushion over 90 days.",
+    },
+)
+
+
+def _seed_applications(sme_rows: list[dict], anchor: date) -> list[dict]:
+    rows: list[dict] = []
+    for i, spec in enumerate(_SEED_APPLICATIONS, start=1):
+        idx = int(spec["sme_index"])
+        if idx >= len(sme_rows):
+            continue
+        submitted = datetime.combine(
+            anchor - timedelta(days=int(spec["days_ago"])), time.min, tzinfo=timezone.utc
+        )
+        recorded = spec.get("recommendation") is not None
+        rows.append(
+            {
+                "id": f"APP-{i:04d}",
+                "sme_id": sme_rows[idx]["id"],
+                "amount": float(spec["amount"]),
+                "annual_rate": float(spec["rate"]),
+                "term_months": int(spec["term"]),
+                "purpose": str(spec["purpose"]),
+                "status": str(spec["status"]),
+                "submitted_at": submitted,
+                "recommendation": spec.get("recommendation"),
+                "recommendation_note": spec.get("note"),
+                "recommendation_at": submitted + timedelta(days=1) if recorded else None,
+                "reviewed_by": "officer" if recorded else None,
+            }
+        )
+    return rows
 
 
 def _utc(d: date) -> datetime:
