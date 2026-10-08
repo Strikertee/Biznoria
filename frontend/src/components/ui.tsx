@@ -77,10 +77,16 @@ export function QueryState({
   isEmpty: boolean;
   loadingLabel: string;
   emptyMessage: string;
-  children: ReactNode;
+  /**
+   * A render function, NOT plain JSX. JSX children are evaluated eagerly by the
+   * caller, so `<QueryState>{data!.x}</QueryState>` dereferences `data` before
+   * this component can check `isLoading` — which throws on the first render and
+   * blanks the page. Passing a function defers evaluation until data is ready.
+   */
+  children: () => ReactNode;
 }) {
   if (isLoading) return <Loading label={loadingLabel} />;
   if (isError) return <ErrorState message={error instanceof Error ? error.message : "Request failed"} onRetry={refetch} />;
   if (isEmpty) return <Empty message={emptyMessage} />;
-  return <>{children}</>;
+  return <>{children()}</>;
 }

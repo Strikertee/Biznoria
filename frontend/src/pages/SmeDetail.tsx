@@ -20,16 +20,18 @@ function Health({ smeId }: { smeId: string }) {
       loadingLabel="Loading health metrics…"
       emptyMessage="No health metrics available."
     >
-      <Card title="Financial health">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <Stat label="Stability" value={data!.stability.toFixed(1)} />
-          <Stat label="Growth" value={data!.growth.toFixed(1)} />
-          <Stat label="Liquidity" value={data!.liquidity.toFixed(1)} />
-          <Stat label="Revenue consistency" value={data!.revenue_consistency.toFixed(1)} />
-          <Stat label="Repayment" value={data!.repayment_score.toFixed(1)} />
-          <Stat label="Expense ratio" value={data!.expense_ratio.toFixed(2)} />
-        </div>
-      </Card>
+      {() => (
+        <Card title="Financial health">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <Stat label="Stability" value={data!.stability.toFixed(1)} />
+            <Stat label="Growth" value={data!.growth.toFixed(1)} />
+            <Stat label="Liquidity" value={data!.liquidity.toFixed(1)} />
+            <Stat label="Revenue consistency" value={data!.revenue_consistency.toFixed(1)} />
+            <Stat label="Repayment" value={data!.repayment_score.toFixed(1)} />
+            <Stat label="Expense ratio" value={data!.expense_ratio.toFixed(2)} />
+          </div>
+        </Card>
+      )}
     </QueryState>
   );
 }
@@ -46,9 +48,11 @@ function Cashflow({ smeId }: { smeId: string }) {
       loadingLabel="Loading cash flow…"
       emptyMessage="No cash-flow history for this SME yet."
     >
-      <Card title="Cash flow — daily net">
-        <CashflowChart points={data!.points} />
-      </Card>
+      {() => (
+        <Card title="Cash flow — daily net">
+          <CashflowChart points={data!.points} />
+        </Card>
+      )}
     </QueryState>
   );
 }
@@ -70,26 +74,28 @@ function ForecastPanel({ smeId }: { smeId: string }) {
       loadingLabel="Loading forecast…"
       emptyMessage="No forecast available for this SME yet."
     >
-      <Card
-        title="Cash-flow forecast"
-        action={
-          <div className="flex gap-1">
-            {([30, 60, 90] as Horizon[]).map((h) => (
-              <button
-                key={h}
-                onClick={() => setHorizon(h)}
-                className={`rounded-lg px-3 py-1 text-xs font-bold ${
-                  horizon === h ? "bg-wema-600 text-white" : "bg-wema-50 text-wema-700 hover:bg-wema-100"
-                }`}
-              >
-                {h}d
-              </button>
-            ))}
-          </div>
-        }
-      >
-        <ForecastChart history={hist.data!.points} forecast={fc.data!} />
-      </Card>
+      {() => (
+        <Card
+          title="Cash-flow forecast"
+          action={
+            <div className="flex gap-1">
+              {([30, 60, 90] as Horizon[]).map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setHorizon(h)}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold ${
+                    horizon === h ? "bg-wema-600 text-white" : "bg-wema-50 text-wema-700 hover:bg-wema-100"
+                  }`}
+                >
+                  {h}d
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <ForecastChart history={hist.data!.points} forecast={fc.data!} />
+        </Card>
+      )}
     </QueryState>
   );
 }
