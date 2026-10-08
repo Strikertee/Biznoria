@@ -49,3 +49,15 @@ Decisions: master tracks origin/master; teammates branch per lane
 Blockers: None
 Next checkpoint: D. Integration complete (backend routes calling biznoria_ml)
 Time remaining: ~8h
+
+### [2026-10-08 03:00] [ML] [OPEN-BANKING-MOCK interface]
+Status: DONE
+Goal: Formalise the ALAT-for-Business consent lifecycle (prompt → approve → read-only time-boxed token → anytime revoke) in docs + adapter interface so backend/open-banking lanes build to one model
+Changes: PRD rule 2 + ARCHITECTURE consent-lifecycle section; backend/app/adapters/openbanking.py now has AccessToken (read-only scopes, issued/expires/revoked), issue_token, SyntheticProvider consent store (request/approve/revoke), token-gated fetch_transactions (unknown/expired/revoked token → zero rows, never an error leak)
+Files changed: docs/PRD.md, docs/ARCHITECTURE.md, backend/app/adapters/openbanking.py
+Tests run: stdlib-only lifecycle smoke (no-consent→internal-only; approve→token+rows; no-token→no-rows; revoke→cut-off; expiry→cut-off)
+Test result: CONSENT_SMOKE_OK
+Decisions: Write/payment scopes excluded by design (READ_ONLY_SCOPES allowlist); token checked against server-side store, never trusted from the presented copy alone; no API contract change (no new endpoints/fields — additive backend internals only)
+Blockers: None — OPEN-BANKING-MOCK lane owns the seeded-RNG data + consent-store wiring on top of this interface
+Next checkpoint: D. Integration complete (backend routes calling biznoria_ml + adapter)
+Time remaining: ~7.5h

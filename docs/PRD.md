@@ -11,6 +11,10 @@ loan what-if simulation.
 1. Synthetic data only. No real credentials, no real banking data, no secrets in git.
 2. Open Banking is consent-based. The system must never present external accounts
    without an authorisation/consent record (with timestamp + expiry).
+   Consent lifecycle (ALAT for Business): SME applies for a facility → secure
+   in-app consent prompt → customer approves → a read-only Open Banking token is
+   issued for a limited, specified window → the customer can revoke it at any time.
+   Expired or revoked tokens must immediately stop all external data access.
 3. Credit readiness is **decision support, not underwriting**. Never output
    approval/decline language. Always attach the prototype disclaimer.
 4. P0 > P1 > P2. P0 ships first.

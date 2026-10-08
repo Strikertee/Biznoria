@@ -37,6 +37,20 @@
 - External rows are only served when a valid, unexpired, unrevoked consent exists.
   The `source` field always distinguishes internal vs authorised-external data.
 
+## Consent lifecycle (ALAT for Business → mock adapter)
+1. SME applies for a facility inside the ALAT for Business app.
+2. A secure consent prompt appears, stating exactly what is shared (read-only
+   account/transaction access), with whom, and for how long (limited window).
+3. On customer approval the adapter issues a scoped **read-only access token**
+   (`AccessToken`: token string, consent id, scopes, issued_at, expires_at).
+   Scopes never include write/payment initiation in this prototype.
+4. Every external-data call presents the token; the adapter validates
+   signature/expiry/revocation before serving any row.
+5. The customer can revoke consent (and hence the token) at any time; revocation
+   takes effect immediately — subsequent external calls return no rows.
+6. Expiry is automatic: an expired token is rejected without a backend change.
+See `backend/app/adapters/openbanking.py` (interface + synthetic implementation).
+
 ## Request flow (example: forecast)
 `GET /api/v1/smes/{id}/forecast?horizon=90` → router validates `horizon ∈ {30,60,90}`
 → loads daily net flow (internal + consented external) → `biznoria_ml.forecast_future`
