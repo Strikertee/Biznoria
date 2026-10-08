@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: biznoria-api
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend/app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: biznoria-db, property: connectionString }
+      - key: FRONTEND_ORIGIN
+        sync: false
+  - type: web
+    name: biznoria-web
+    runtime: node
+    buildCommand: npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+databases:
+  - name: biznoria-db
+    plan: free
