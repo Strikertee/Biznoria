@@ -37,3 +37,15 @@ Decisions: Test bugs were harness-side (fixture scope, substring scan vs verbati
 Blockers: None remaining on ML lane
 Next checkpoint: D. Integration complete — backend teammate imports biznoria_ml for forecast/credit/simulation routes per API_CONTRACT.md
 Time remaining: ~8h
+
+### [2026-10-08 02:30] [ML] [SCAFFOLD]
+Status: DONE
+Goal: Push monorepo to GitHub so backend/frontend teammates can collaborate
+Changes: git remote add origin https://github.com/Strikertee/Biznoria.git; pushed master (commit 99ca4d7, 46 files)
+Files changed: none (push only)
+Tests run: none (no code change)
+Test result: n/a
+Decisions: master tracks origin/master; teammates branch per lane
+Blockers: None
+Next checkpoint: D. Integration complete (backend routes calling biznoria_ml)
+Time remaining: ~8h
